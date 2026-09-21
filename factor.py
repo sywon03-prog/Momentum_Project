@@ -1,60 +1,65 @@
 import yfinance as yf
 import pandas as pd
 import matplotlib.pyplot as plt
-import io
-import os
-import requests
 
-URL = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
-HEADERS = {"User-Agent": "Mozilla/5.0 (educational research)"}
+TICKERS = pd.read_csv("Project-1/data/tickers.csv")["ticker"].tolist()
 
-html = requests.get(URL,headers=HEADERS, timeout = 30).text
-sp500 = pd.readhtml(io.StringIO(html))[0]
-sp500["Symbol"] = sp500["Symbol"].str.replace(".", "-", regex=False)
 
-# 3. 섹터별로 N개씩 무작위 추출
-N_PER_SECTOR = 4
-picked = (
-    sp500.groupby("GICS Sector", group_keys=False)
-         .sample(n=N_PER_SECTOR, random_state=42)
-         [["Symbol", "GICS Sector"]]
-         .rename(columns={"Symbol": "ticker", "GICS Sector": "sector"})
-)
-
-# 4. 파일로 고정 저장
-os.makedirs("data", exist_ok=True)
-picked.to_csv("data/tickers.csv", index=False)
-
-print(picked["sector"].value_counts())
-print(f"총 {len(picked)}개")
-raw = yf.download(TICKERS , start = "2009-01-01",end = "2012-12-31",auto_adjust = False,progress = False)
+raw = yf.download(TICKERS , start = "2008-07-01",end = "2012-12-31",auto_adjust = False,progress = False)
 
 P = raw["Adj Close"]
 
 
 ## 월말 종가 가격
 M = P.resample("ME").last()
-
+print(M.notna().sum().sort_values())
 ## 모멘텀
 F = M.shift(1) / M.shift(6) - 1
+print(F.notna().sum(axis=1).value_counts())
 #월별 수익률
 R = M.pct_change()
 #월별 수익률(선행 수익률)
 R_fwd = M.pct_change().shift(-1)
-
+### 각 분위별로 월별 수익률 평균 측정(산술평균) -> 분위가 높아질수록 더 높은 수익률이 나와야 모멘텀이 잘 작동하는 것.
 pct = F.rank(axis = 1,pct = True)
+Q5 = pct > 0.8
+Q1 = pct <= 0.2
+Q2 = (0.2 < pct) & (pct <=0.4)
+Q3 = (0.4< pct) & (pct <=0.6)
+Q4 = (0.6 < pct) & (pct <=0.8)
+W_Q5 = Q5.div(Q5.sum(axis = 1) , axis = 0)
+W_Q1 =  Q1.div(Q1.sum(axis = 1) , axis = 0)
+W_Q2 = Q2.div(Q2.sum(axis = 1), axis = 0)
+W_Q3 = Q3.div(Q3.sum(axis = 1), axis = 0)
+W_Q4 = Q4.div(Q4.sum(axis = 1), axis = 0)
 
-buy = pct >= 0.8
-sell = pct <= 0.4
-W_top = buy.div(buy.sum(axis = 1) , axis = 0)
-W_down = - sell.div(sell.sum(axis = 1) , axis = 0)
+re_Q1 = (R_fwd * W_Q1).sum(axis = 1,min_count = 2)
+avg_Q1 = re_Q1.mean()
+re_Q2 = (R_fwd * W_Q2).sum(axis = 1, min_count = 2)
+avg_Q2 = re_Q2.mean()
+re_Q3 = (R_fwd * W_Q3).sum(axis = 1,min_count = 2)
+avg_Q3 = re_Q3.mean()
+re_Q4 = (R_fwd * W_Q4).sum(axis = 1,min_count = 2)
+avg_Q4 = re_Q4.mean()
+re_Q5 = (R_fwd * W_Q5).sum(axis = 1,min_count = 2)
+avg_Q5 = re_Q5.mean()
+Q5_Q1_spread = re_Q5 - re_Q1
+Q5_Q1_spread_std = Q5_Q1_spread.std()
+Q5_Q1_spread_stderr = Q5_Q1_spread_std / (47 ** (1 / 2))
+Q5_Q1_t = Q5_Q1_spread.mean() / Q5_Q1_spread_stderr
+print(Q5_Q1_t)
 
-W = W_top + W_down
+
+
+std_Q1 = re_Q1
+W = W_Q5 - W_Q1
 
 ## 동일가중 평균 포트폴리오의 수익률 (전략 : 6-1 모멘텀)
 ret_WnL = R_fwd * W
 ret_WnL = ret_WnL.sum(axis = 1 , min_count=2)
+
 ret_WnL = ret_WnL.dropna()
+
 cum_re = (1 + ret_WnL).cumprod()
 total = cum_re.iloc[-1]
 year = ret_WnL.count() / 12
@@ -87,13 +92,13 @@ group = (~mask).cumsum() ## 라벨
 
 
 
-'''
+
 print(f"CAGR:   {ret_CAGR:.2%}")
 print(f"연 표준편차(변동성):   {std_annual:.2%}")
 print(f"Sharp:   {sharp:.2}")
-print(f"MDD:    {MDD:.2f}")
+print(f"MDD:    {MDD:.2%}")
 print(f"최장 Draadown 기간:     {mask.groupby(group).size().max():.2f}")
-
+'''
 CAGR:   -6.89%
 연 표준편차(변동성):   16.89%
 Sharp:   -0.41
@@ -115,18 +120,14 @@ IC_std = IC_rank.std()
 
 IC_IR = IC_mean / IC_std
 
-plt.plot(IC_rank)
-plt.show()
-
-breadth = 5 * 4 
+breadth = 4*12
 IR = (IC_rank * (breadth ** (1 / 2))).mean()
 
 print(f"IR : {IR:.2f}")
 print(f"sharp : {sharp:.2f}")
 '''
-종목 수가 너무 적어서 ,
+종목 수가 너무 적어서 늘리기로 함 
 '''
-
 
 
 

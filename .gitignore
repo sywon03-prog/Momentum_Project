@@ -3,3 +3,6 @@ data/
 .DS_Store
 __pycache__/
 *.pyc
+CLAUDE.md
+docs/concepts.md
+!data/tickers.csv

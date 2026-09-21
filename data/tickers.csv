@@ -1,0 +1,45 @@
+ticker,sector
+PSKY,Communication Services
+LYV,Communication Services
+GOOGL,Communication Services
+FOX,Communication Services
+MGM,Consumer Discretionary
+HD,Consumer Discretionary
+NKE,Consumer Discretionary
+F,Consumer Discretionary
+ADM,Consumer Staples
+COST,Consumer Staples
+CASY,Consumer Staples
+WMT,Consumer Staples
+MPC,Energy
+TPL,Energy
+HAL,Energy
+COP,Energy
+MRSH,Financials
+C,Financials
+BNY,Financials
+WTW,Financials
+INCY,Health Care
+JNJ,Health Care
+MRK,Health Care
+SYK,Health Care
+UAL,Industrials
+FAST,Industrials
+EXPD,Industrials
+RSG,Industrials
+AMD,Information Technology
+ORCL,Information Technology
+MSFT,Information Technology
+DELL,Information Technology
+PPG,Materials
+LIN,Materials
+FCX,Materials
+AVY,Materials
+WELL,Real Estate
+SBAC,Real Estate
+EXR,Real Estate
+HST,Real Estate
+ATO,Utilities
+PCG,Utilities
+SRE,Utilities
+D,Utilities
