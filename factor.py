@@ -147,3 +147,6 @@ print(f"첨도(2009-03월 제외):   {ret_wml_m_ex.kurt():+.2f}")
 y_2009_m_03 = ret_wml_m.loc["2009-03-31"]
 y_2009_m_03_vol = (y_2009_m_03 - ret_wml_m.mean()) / ret_wml_m.std()
 print(f"2009-03월 수익의 정규화 : {y_2009_m_03_vol:.2f}")
+
+
+ret_wml_m.to_pickle("Project-1/data/ret_wml_m.pkl")
