@@ -4,5 +4,5 @@ data/
 __pycache__/
 *.pyc
 CLAUDE.md
-docs/concepts.md
+docs/
 !data/tickers.csv
