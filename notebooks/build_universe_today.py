@@ -20,8 +20,8 @@ picked = (
 )
 
 # 4. 파일로 고정 저장
-os.makedirs("data", exist_ok=True)
-picked.to_csv("data/tickers.csv", index=False)
+os.makedirs("data/universe", exist_ok=True)
+picked.to_csv("data/universe/tickers_pilot42.csv", index=False)
 
 print(picked["sector"].value_counts())
 print(f"총 {len(picked)}개")
