@@ -2,6 +2,11 @@ import io
 import os
 import requests
 import pandas as pd
+from pathlib import Path
+try:
+    ROOT = Path(__file__).resolve().parents[1]
+except NameError:
+    ROOT = Path.cwd()
 
 URL = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
 HEADERS = {"User-Agent": "Mozilla/5.0 (educational research)"}
@@ -20,8 +25,8 @@ picked = (
 )
 
 # 4. 파일로 고정 저장
-os.makedirs("data/universe", exist_ok=True)
-picked.to_csv("data/universe/tickers_pilot42.csv", index=False)
+os.makedirs(ROOT / "data/universe", exist_ok=True)
+picked.to_csv(ROOT / "data/universe/tickers_pilot42.csv", index=False)
 
 print(picked["sector"].value_counts())
 print(f"총 {len(picked)}개")

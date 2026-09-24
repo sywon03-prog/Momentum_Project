@@ -3,8 +3,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
 import numpy as np
-KF_MOM_PATH = "data/raw/F-F_Momentum_Factor.csv"
-KF_DATA_FACTORS = "data/raw/F-F_Research_Data_Factors.csv"
+from pathlib import Path
+try:
+    ROOT = Path(__file__).resolve().parents[1]
+except NameError:
+    ROOT = Path.cwd()
+KF_MOM_PATH = ROOT / "data/raw/F-F_Momentum_Factor.csv"
+KF_DATA_FACTORS = ROOT / "data/raw/F-F_Research_Data_Factors.csv"
 raw = pd.read_csv(KF_MOM_PATH , skiprows=13)
 raw = raw.rename(columns = {"Unnamed: 0":"date"})
 
@@ -43,7 +48,7 @@ plt.show()
 '''
 
 
-ret_wml_m = pd.read_pickle("data/cache/ret_wml_m.pkl")
+ret_wml_m = pd.read_pickle(ROOT / "data/cache/ret_wml_m.pkl")
 ret_wml_m = ret_wml_m.shift(1)
 with_wml_umd = pd.DataFrame({"my" : ret_wml_m,"yours" : umd_m})
 

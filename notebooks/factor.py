@@ -3,8 +3,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 import numpy as np
-PX_CACHE = "data/cache/px_d.pkl"
-TICKERS = pd.read_csv("data/universe/tickers_pilot42.csv")["ticker"].tolist()
+from pathlib import Path
+try:
+    ROOT = Path(__file__).resolve().parents[1]
+except NameError:
+    ROOT = Path.cwd()
+PX_CACHE = ROOT / "data/cache/px_d.pkl"
+TICKERS = pd.read_csv(ROOT / "data/universe/tickers_pilot42.csv")["ticker"].tolist()
 
 if os.path.exists(PX_CACHE) :
     px_d = pd.read_pickle(PX_CACHE)
@@ -149,4 +154,4 @@ y_2009_m_03_vol = (y_2009_m_03 - ret_wml_m.mean()) / ret_wml_m.std()
 print(f"2009-03월 수익의 정규화 : {y_2009_m_03_vol:.2f}")
 
 
-ret_wml_m.to_pickle("data/cache/ret_wml_m.pkl")
+ret_wml_m.to_pickle(ROOT / "data/cache/ret_wml_m.pkl")
