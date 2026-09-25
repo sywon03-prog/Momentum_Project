@@ -22,17 +22,17 @@ else :
 
 events = raw[raw["action"].isin(["added" , "removed"])][["date","ticker","action"]]
 events = events.sort_values("date")
-
+print("2222" , events.shape)
 month_ends = pd.date_range("2003-12-31" , "2026-08-31" , freq = "ME")
 tickers = events["ticker"].unique()
+print("2333333",tickers.shape)
 grid = pd.MultiIndex.from_product([month_ends , tickers], names = ["date", "ticker"]).to_frame(index= False)
 
 last_event = pd.merge_asof(grid, events , on = "date",by = "ticker", direction = "backward")
 
 
+print(last_event)
 sp500_monthly = last_event[last_event["action"] == "added"][["date","ticker"]]
-
-print(sp500_monthly[:100])
 
 SP500_MONTHLY_CACHE = ROOT / "data/cache/sharadar/sp500_monthly.pkl" 
 sp500_monthly.to_pickle(SP500_MONTHLY_CACHE)  
