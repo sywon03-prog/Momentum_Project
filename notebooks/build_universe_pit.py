@@ -71,7 +71,8 @@ def tickers_from_html(html):
         for c in cols:
             if c.strip() in ("Ticker symbol", "Symbol"):
                 t.columns = cols
-                return t[c].astype(str).str.strip().tolist()
+                return t[c].dropna().astype(str).str.strip().tolist()
+
     return []
 
 
