@@ -14,7 +14,7 @@ PAGE = "List of S&P 500 companies"
 HEADERS = {"User-Agent": "Project1-MomentumResearch/0.1 (educational; python-requests)"}
 HTML_CACHE = ROOT / "data/cache/wiki_sp500"
 REV_CACHE = HTML_CACHE / "revisions_all.csv"
-OUT_PATH = ROOT / "data/universe/sp500_pit_monthly.csv"
+OUT_PATH = ROOT / "data/universe/sp500_wiki_monthly.csv"
 MONTH_ENDS = pd.date_range("2007-03-31", "2026-08-31", freq="ME")
 
 
