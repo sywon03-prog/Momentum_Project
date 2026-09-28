@@ -5,27 +5,24 @@ from statsmodels.regression.rolling import RollingOLS
 import statsmodels.api as sm
 import matplotlib.pyplot as plt
 import numpy as np
+
 try:
     ROOT = Path(__file__).resolve().parents[1]
 except NameError:
     ROOT = Path.cwd()
 
-def f_parsing(path , skiprows) : 
-    file = pd.read_csv(path,skiprows = skiprows)
-    file = file.rename(columns = {"Unnamed: 0":"date"})
 
-    is_monthly = file["date"].str.strip().str.match(r"^\d{6}$",na = False)
-    file = file[is_monthly]
+import sys
+sys.path.insert(0,str(ROOT))
+from src.data import load_french , load_legs_real , FF3_CSV
 
-    file["date"] = pd.to_datetime(file["date"].str.strip(),format = "%Y%m") + pd.offsets.MonthEnd(0)
 
-    file = file.set_index("date")
-    file = file.astype(float)
-    file = file / 100
+mkt_data = load_french(FF3_CSV , 4)
+legs = load_legs_real()
+ret_wml_m = legs["wml"]
+ret_q5_m_sp500 = legs["q5"]
+ret_q1_m_sp500 = legs["q1"]
 
-    return file
-
-mkt_data = f_parsing(ROOT / "data/raw/F-F_Research_Data_Factors.csv", 4)
 mkt_m = mkt_data["Mkt-RF"] + mkt_data["RF"]
 ##강건성 검증 용 변수 
 BEAR_MONTHS = 24
@@ -37,7 +34,6 @@ mkt_cum = mkt_idx.shift(1) / mkt_idx.shift(BEAR_MONTHS + 1) - 1
 is_bear = mkt_cum < 0
 mkt_bounc = mkt_m > 0 
 is_crash_cond = is_bear & mkt_bounc
-ret_wml_m = pd.read_pickle(ROOT / "data/cache/ret_wml_m_sp500.pkl").shift(1, freq="ME")
 crash_dates = is_crash_cond[is_crash_cond].loc["2004":].index
 crash_tbl = pd.DataFrame({
     "mkt_cum":mkt_cum,
@@ -46,21 +42,20 @@ crash_tbl = pd.DataFrame({
 }).loc[crash_dates]
 
 month_no = pd.Series(crash_tbl.index.year * 12 + crash_tbl.index.month , index = crash_tbl.index)
-
 gap = month_no.diff()
 crash_tbl["event_id"] = (gap.isna() | (gap > 3)).cumsum()
-
 crash_events = crash_tbl.reset_index().groupby("event_id")["date"].agg(["min","max","count"])
 
+'''
 print(crash_tbl.to_string(float_format="{:+.2%}".format))  
 print(crash_events) 
 crash_events_date = crash_events[["min","max"]]
+'''
+
 
 
 
 # 24창 굴리면서 베타 
-ret_q1_m_sp500= pd.read_pickle(ROOT / "data/cache/ret_q1_m_sp500.pkl").shift(1,freq = "ME")
-ret_q5_m_sp500= pd.read_pickle(ROOT / "data/cache/ret_q5_m_sp500.pkl").shift(1,freq = "ME")
 make_beta_prepare = pd.DataFrame({"mkt_rf" : mkt_data["Mkt-RF"] ,
                                   "rf" : mkt_data["RF"] ,
                                   "wml" : ret_wml_m,

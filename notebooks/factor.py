@@ -5,38 +5,19 @@ import os
 import numpy as np
 from pathlib import Path
 import nasdaqdatalink as ndl
+
 try:
     ROOT = Path(__file__).resolve().parents[1]
 except NameError:
     ROOT = Path.cwd()
-# %% 명단 , 가격 데이터 (둘 다 긴표형태라 pivot 필요)
-PX_CACHE = ROOT / "data/cache/sharadar/sep_closeadj_20260925.pkl"
-sp500_monthly = pd.read_pickle(ROOT / "data/cache/sharadar/sp500_monthly.pkl")
-px_d = pd.read_pickle(PX_CACHE)
-px_d = px_d.pivot(index = "date",columns = "ticker",values = "closeadj")
-px_m = px_d.resample("ME").last()
 ## 강건성 검증 변수 
 UNIVERSE = "pit"
-# %% 마스크
-if(UNIVERSE == "pit"):
-    sp500_monthly["is_sp500"] = True
-    in_univ = sp500_monthly.pivot(index = "date",columns = 
-                                "ticker",values = "is_sp500")
-    in_univ = in_univ.notna()
 
-    in_univ = in_univ.reindex(index = px_m.index,
-                            columns = px_m.columns,
-                            fill_value = False)
-else :
-    sp500_monthly["is_sp500"] = True
-    in_univ = sp500_monthly.pivot(index = "date", columns = "ticker",
-                                  values = "is_sp500")
-    now = in_univ.iloc[-1]
-    now = now.notna()
-    now = now[now]
-    in_univ = pd.DataFrame(True,index = px_m.index , columns = now.index)
-    in_univ = in_univ.reindex(columns = px_m.columns , fill_value=False)
-    in_univ.loc[:"2003-11-30"] = False
+import sys
+sys.path.insert(0,str(ROOT))
+from src.data import load_px_m , load_in_univ
+px_m = load_px_m()
+in_univ = load_in_univ(px_m , UNIVERSE)
 
 
 ## 모멘텀
