@@ -2,7 +2,9 @@
 import sys
 import pandas as pd
 from pathlib import Path
-
+import matplotlib.pyplot as plt
+plt.rcParams["font.family"] = "AppleGothic"
+plt.rcParams["axes.unicode_minus"] = False
 try:
     ROOT = Path(__file__).resolve().parents[1]
 except NameError:
@@ -45,6 +47,7 @@ ret_q2_m = (ret_fwd * w_q2).sum(axis = 1, min_count = 1)
 ret_q3_m = (ret_fwd * w_q3).sum(axis = 1,min_count = 1)
 ret_q4_m = (ret_fwd * w_q4).sum(axis = 1,min_count = 1)
 ret_q5_m = (ret_fwd * w_q5).sum(axis = 1,min_count = 1)
+
 
 ## 동일가중 평균 포트폴리오의 수익률 (전략 : 6-1 모멘텀)
 w_wml = w_q5 - w_q1
@@ -167,3 +170,36 @@ if(UNIVERSE == "pit") :
     ret_wml_m.to_pickle(WML_CACHE)
     ret_q5_m.to_pickle(Q5_CACHE)
     ret_q1_m.to_pickle(Q1_CACHE)
+
+# %% ---------------------------- 10. 그림 ----------------------------
+cum_real = cum_growth.copy()
+cum_real.index = cum_real.index + pd.offsets.MonthEnd(1)
+high_x = high_date + pd.offsets.MonthEnd(1)
+low_x = mdd_date + pd.offsets.MonthEnd(1)
+
+q_names = ["Q1", "Q2", "Q3", "Q4", "Q5"]
+q_rets = [ret_q1_m, ret_q2_m, ret_q3_m, ret_q4_m, ret_q5_m]
+q_mean = [r.mean() * 100 for r in q_rets]
+q_ci = [1.96 * r.std() / r.count() ** 0.5 * 100 for r in q_rets]
+
+fig, axes = plt.subplots(1, 2, figsize = (14, 4.8), gridspec_kw = {"width_ratios": [2, 1]})
+ax_cum, ax_q = axes
+ax_cum.plot(cum_real, color = "tab:blue")
+ax_cum.axhline(1, color = "gray", linewidth = 0.8)
+ax_cum.scatter([high_x, low_x], [cum_growth.loc[high_date], cum_growth.loc[mdd_date]], color = "red", zorder = 3)
+ax_cum.text(high_x, cum_growth.loc[high_date], f"  고점 {high_x:%Y-%m}", va = "bottom")
+ax_cum.text(low_x, cum_growth.loc[mdd_date], f"  저점 {low_x:%Y-%m} (MDD {mdd:.1%})", va = "top")
+ax_cum.set_yscale("log")
+ax_cum.minorticks_off()
+ax_cum.set_yticks([0.5, 0.7, 1.0, 1.4])
+ax_cum.set_yticklabels(["0.5", "0.7", "1.0", "1.4"])
+ax_cum.set_title("WML 누적 (1원 기준, 로그 축)")
+
+ax_q.bar(q_names, q_mean, yerr = q_ci, color = "tab:gray", capsize = 4)
+ax_q.axhline(0, color = "gray", linewidth = 0.8)
+ax_q.set_ylabel("월평균 수익률 (%)")
+ax_q.set_title("분위별 월평균 (수염: 95% 신뢰구간)")
+
+fig.tight_layout()
+fig.savefig(ROOT / "figs/existence.png", dpi = 200, bbox_inches = "tight")
+plt.show()

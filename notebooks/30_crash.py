@@ -185,9 +185,20 @@ print(leg_tbl.to_string(float_format="{:+.2%}".format))
 
 # %% ------------------------------ 9. 그림 ---------------------------------
 
-fig, axes = plt.subplots(2, 1, figsize=(11, 8), sharex=True)
+fig, axes = plt.subplots(3, 1, figsize=(11, 8), sharex=True,gridspec_kw={"height_ratios":[1 , 1.3 ,1]})
 
 ax = axes[0]
+for start, end in zip(crash_events["min"], crash_events["max"]):
+    ax.axvspan(start - pd.offsets.MonthEnd(1), end, color = "tab:red", alpha = 0.12, linewidth = 0)
+ax.bar(ret_wml_m.index, ret_wml_m * 100, width = 25, color = "tab:gray")
+ax.bar(crash_tbl.index, crash_tbl["wml_m"] * 100, width = 25, color = "tab:red", label = "크래시 조건 만족 기간")
+ax.axhline(0, color = "gray", linewidth = 0.8)
+ax.set_ylabel("WML 월 수익률 (%)")
+ax.set_title("월별 WML 수익률 (빨간 막대: 크래시 조건 만족 기간)")
+ax.legend(loc = "lower left", frameon = False)
+
+
+ax = axes[1]
 for start, end in zip(crash_events["min"], crash_events["max"]):
     ax.axvspan(start - pd.offsets.MonthEnd(1), end, color="tab:red", alpha=0.12, lw=0)
 ax.fill_between(beta.index, beta - 1.96 * beta_se, beta + 1.96 * beta_se,
@@ -200,7 +211,7 @@ ax.set_ylabel("24개월 이동 시장 베타")
 ax.set_title("WML,Q1,Q5의 시장 베타 (빨간 띠: 크래시 조건 만족 기간)")
 ax.legend(loc="lower left", ncol=4, fontsize=9, frameon=False)
 
-ax = axes[1]
+ax = axes[2]
 for start, end in zip(crash_events["min"], crash_events["max"]):
     ax.axvspan(start - pd.offsets.MonthEnd(1), end, color="tab:red", alpha=0.12, lw=0)
 ax.plot(beta, color="tab:blue", lw=1.5, label="24개월 창")
