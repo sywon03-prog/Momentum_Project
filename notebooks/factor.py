@@ -15,16 +15,29 @@ sp500_monthly = pd.read_pickle(ROOT / "data/cache/sharadar/sp500_monthly.pkl")
 px_d = pd.read_pickle(PX_CACHE)
 px_d = px_d.pivot(index = "date",columns = "ticker",values = "closeadj")
 px_m = px_d.resample("ME").last()
-
+## 강건성 검증 변수 
+UNIVERSE = "pit"
 # %% 마스크
-sp500_monthly["is_sp500"] = True
-in_univ = sp500_monthly.pivot(index = "date",columns = 
-                            "ticker",values = "is_sp500")
-in_univ = in_univ.notna()
+if(UNIVERSE == "pit"):
+    sp500_monthly["is_sp500"] = True
+    in_univ = sp500_monthly.pivot(index = "date",columns = 
+                                "ticker",values = "is_sp500")
+    in_univ = in_univ.notna()
 
-in_univ = in_univ.reindex(index = px_m.index,
-                          columns = px_m.columns,
-                          fill_value = False)
+    in_univ = in_univ.reindex(index = px_m.index,
+                            columns = px_m.columns,
+                            fill_value = False)
+else :
+    sp500_monthly["is_sp500"] = True
+    in_univ = sp500_monthly.pivot(index = "date", columns = "ticker",
+                                  values = "is_sp500")
+    now = in_univ.iloc[-1]
+    now = now.notna()
+    now = now[now]
+    in_univ = pd.DataFrame(True,index = px_m.index , columns = now.index)
+    in_univ = in_univ.reindex(columns = px_m.columns , fill_value=False)
+    in_univ.loc[:"2003-11-30"] = False
+
 
 ## 모멘텀
 mom_6_1 = px_m.shift(1) / px_m.shift(6) - 1
@@ -168,10 +181,12 @@ print(is_q1.sum(axis=1).loc["2004":].describe())
 print(ret_wml_m.index.min(), ret_wml_m.index.max(), ret_wml_m.count())
 
 
+if(UNIVERSE == "pit") : 
+    ret_wml_m.to_pickle(ROOT / "data/cache/ret_wml_m_sp500.pkl")
+    ret_q5_m.to_pickle(ROOT / "data/cache/ret_q5_m_sp500.pkl") 
+    ret_q1_m.to_pickle(ROOT / "data/cache/ret_q1_m_sp500.pkl")
 
-ret_wml_m.to_pickle(ROOT / "data/cache/ret_wml_m_sp500.pkl")
-ret_q5_m.to_pickle(ROOT / "data/cache/ret_q5_m_sp500.pkl") 
-ret_q1_m.to_pickle(ROOT / "data/cache/ret_q1_m_sp500.pkl")
+
 
 
 ## 파일럿과 1대1 비교

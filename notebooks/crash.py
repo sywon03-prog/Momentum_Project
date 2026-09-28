@@ -26,19 +26,21 @@ def f_parsing(path , skiprows) :
     return file
 
 mkt_data = f_parsing(ROOT / "data/raw/F-F_Research_Data_Factors.csv", 4)
-
 mkt_m = mkt_data["Mkt-RF"] + mkt_data["RF"]
-
+##강건성 검증 용 변수 
+BEAR_MONTHS = 24
+BEAR_MKT = mkt_data["Mkt-RF"] + mkt_data["RF"]
+##
 ##모멘텀 크래시 조건 (D&M 조건)
-mkt_idx = (1 + mkt_m).cumprod()
-mkt_cum24 = mkt_idx.shift(1) / mkt_idx.shift(25) - 1
-is_bear = mkt_cum24 < 0
+mkt_idx = (1 + BEAR_MKT).cumprod()
+mkt_cum = mkt_idx.shift(1) / mkt_idx.shift(BEAR_MONTHS + 1) - 1
+is_bear = mkt_cum < 0
 mkt_bounc = mkt_m > 0 
 is_crash_cond = is_bear & mkt_bounc
 ret_wml_m = pd.read_pickle(ROOT / "data/cache/ret_wml_m_sp500.pkl").shift(1, freq="ME")
 crash_dates = is_crash_cond[is_crash_cond].loc["2004":].index
 crash_tbl = pd.DataFrame({
-    "mkt_cum24":mkt_cum24,
+    "mkt_cum":mkt_cum,
     "mkt_m":mkt_m,
     "wml_m":ret_wml_m
 }).loc[crash_dates]
@@ -91,22 +93,23 @@ beta_median_24 = beta.median()
 
 judge_tbl = pd.DataFrame({
     "직전 달": pre_dates.dt.strftime("%Y-%m").values,
-    "β_WML_24": beta.loc[pre_dates].values,
-    "CI상단_24": (beta + 1.96 * beta_se).loc[pre_dates].values,
-    "β_WML_12": beta_12.loc[pre_dates].values,
-    "β_Q5_24": beta_q5.loc[pre_dates].values,
-    "β_Q1_24": beta_q1.loc[pre_dates].values,
+    "β_WML_24": beta.reindex(pre_dates).values,
+    "CI상단_24": (beta + 1.96 * beta_se).reindex(pre_dates).values,
+    "β_WML_12": beta_12.reindex(pre_dates).values,
+    "β_Q5_24": beta_q5.reindex(pre_dates).values,
+    "β_Q1_24": beta_q1.reindex(pre_dates).values,
 }, index=crash_events.index)
 
 is_a = judge_tbl["β_WML_24"] < 0
 is_b = judge_tbl["CI상단_24"] < 0
 is_c = judge_tbl["β_WML_24"] < beta_median_24
+is_na = judge_tbl["β_WML_24"].isna()   
 judge_tbl["(a)"] = is_a
 judge_tbl["(b)"] = is_b
 judge_tbl["(c)"] = is_c
 judge_tbl["판정"] = np.select(
-    [is_a & is_b & is_c, is_a & ~is_b],
-    ["꺾였다", "음수 방향, 0과 구별 안 됨"],
+    [is_na ,is_a & is_b & is_c, is_a & ~is_b],
+    ["베타 없음" ,"꺾였다", "음수 방향, 0과 구별 안 됨"],
     default="기준 미충족",
 )
 
@@ -158,7 +161,7 @@ share_cr = (n_cr/n_all) * mean_cr
 cost = mean_nm - mean_all
 diff_t = (mean_nm - mean_cr) / (se_nm ** 2 + se_cr ** 2) ** 0.5
 
-'''
+
 print(f"기간 {wml.index.min():%Y-%m} ~ {wml.index.max():%Y-%m}")
 print(f"{'':8}{'개수':>6}{'평균':>10}{'t':>8}")
 print(f"{'평소 달':8}{n_nm:>6}{mean_nm:>+10.2%}{t_nm:>+8.2f}")
@@ -170,7 +173,7 @@ print(f"조건 달의 몫  {share_cr:+.3%}")
 print(f"크래시 비용   {cost:+.3%}   ( 평소 평균 - 전체 평균)")
 print(f"차이의 t      {diff_t:+.2f}")
 
-'''
+
 #is_crash_cond
 ## 각 사건마다 그룹 -> 각 기간마다 누적 -> L -> q1을 누적 -> q1/L -> 비율
 
@@ -186,6 +189,4 @@ leg_tbl["판정"] = np.select(
     default = "롱쪽 손실"
 )
 print(leg_tbl.to_string(float_format="{:+.2%}".format))
-
-
 
