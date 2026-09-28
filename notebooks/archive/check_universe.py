@@ -2,11 +2,12 @@ import pandas as pd
 from pathlib import Path
 
 try : 
-    ROOT = Path(__file__).resolve().parents[1]
+    ROOT = Path(__file__).resolve().parents[2]
 except NameError :
     ROOT = Path.cwd()
 
-sp500_pit = pd.read_csv(ROOT/ "data/universe/sp500_pit_monthly.csv" , parse_dates = ["date"])
+sp500_pit = pd.read_csv(ROOT / "data/universe/sp500_wiki_monthly.csv", parse_dates=["date"])
+
 
 print(sp500_pit)
 

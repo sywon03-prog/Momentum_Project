@@ -5,10 +5,10 @@ import os
 import numpy as np
 from pathlib import Path
 try:
-    ROOT = Path(__file__).resolve().parents[1]
+    ROOT = Path(__file__).resolve().parents[2]
 except NameError:
     ROOT = Path.cwd()
-PX_CACHE = ROOT / "data/cache/px_d.pkl"
+PX_CACHE = ROOT / "data/cache/pilot/px_d_pilot42.pkl"
 TICKERS = pd.read_csv(ROOT / "data/universe/tickers_pilot42.csv")["ticker"].tolist()
 
 if os.path.exists(PX_CACHE) :

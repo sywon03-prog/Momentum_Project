@@ -4,7 +4,7 @@ import requests
 import pandas as pd
 from pathlib import Path
 try:
-    ROOT = Path(__file__).resolve().parents[1]
+    ROOT = Path(__file__).resolve().parents[2]
 except NameError:
     ROOT = Path.cwd()
 

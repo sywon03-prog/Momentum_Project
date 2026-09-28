@@ -13,7 +13,7 @@ UNIVERSE = "pit"
 
 # %% ---------------------------- 1. 데이터 -------------------------------
 sys.path.insert(0,str(ROOT))
-from src.data import load_px_m , load_in_univ
+from src.data import load_px_m , load_in_univ , WML_CACHE , Q5_CACHE , Q1_CACHE
 px_m = load_px_m()
 in_univ = load_in_univ(px_m , UNIVERSE)
 
@@ -164,6 +164,6 @@ print(f"가장 많이 오른 short 종목 10개의 2020-03-31 기여: {total_sha
 
 # %% ---------------------------- 9. 캐시 저장 ----------------------------
 if(UNIVERSE == "pit") : 
-    ret_wml_m.to_pickle(ROOT / "data/cache/ret_wml_m_sp500.pkl")
-    ret_q5_m.to_pickle(ROOT / "data/cache/ret_q5_m_sp500.pkl") 
-    ret_q1_m.to_pickle(ROOT / "data/cache/ret_q1_m_sp500.pkl")
+    ret_wml_m.to_pickle(WML_CACHE)
+    ret_q5_m.to_pickle(Q5_CACHE)
+    ret_q1_m.to_pickle(Q1_CACHE)
