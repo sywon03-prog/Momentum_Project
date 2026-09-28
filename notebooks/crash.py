@@ -1,18 +1,23 @@
-import os
+# %% ---------------------------- 0. 환경 설정 ----------------------------
 from pathlib import Path
 import pandas as pd
 from statsmodels.regression.rolling import RollingOLS
 import statsmodels.api as sm
 import matplotlib.pyplot as plt
 import numpy as np
-
+import sys
 try:
     ROOT = Path(__file__).resolve().parents[1]
 except NameError:
     ROOT = Path.cwd()
 
+pd.set_option("display.unicode.east_asian_width", True)
+plt.rcParams["font.family"] = "AppleGothic"
+plt.rcParams["axes.unicode_minus"] = False
 
-import sys
+
+# %% ---------------------------- 1. 데이터 -------------------------------
+
 sys.path.insert(0,str(ROOT))
 from src.data import load_french , load_legs_real , FF3_CSV
 
@@ -26,43 +31,40 @@ ret_q1_m_sp500 = legs["q1"]
 mkt_m = mkt_data["Mkt-RF"] + mkt_data["RF"]
 ##강건성 검증 용 변수 
 BEAR_MONTHS = 24
-BEAR_MKT = mkt_data["Mkt-RF"] + mkt_data["RF"]
-##
+BEAR_MKT = "total"
+# %% -------------------------- 2.① 언제: 크래시 조건 달  -----------------------------
 ##모멘텀 크래시 조건 (D&M 조건)
-mkt_idx = (1 + BEAR_MKT).cumprod()
+bear_mkt = mkt_m if BEAR_MKT == "total" else mkt_data["Mkt-RF"]
+mkt_idx = (1 + bear_mkt).cumprod()
 mkt_cum = mkt_idx.shift(1) / mkt_idx.shift(BEAR_MONTHS + 1) - 1
 is_bear = mkt_cum < 0
-mkt_bounc = mkt_m > 0 
-is_crash_cond = is_bear & mkt_bounc
+is_bounc = mkt_m > 0 
+is_crash_cond = is_bear & is_bounc
 crash_dates = is_crash_cond[is_crash_cond].loc["2004":].index
 crash_tbl = pd.DataFrame({
     "mkt_cum":mkt_cum,
     "mkt_m":mkt_m,
     "wml_m":ret_wml_m
 }).loc[crash_dates]
-
+# %% ---------------------------- 3. 사건(크래시) 묶기 -------------------------------
 month_no = pd.Series(crash_tbl.index.year * 12 + crash_tbl.index.month , index = crash_tbl.index)
 gap = month_no.diff()
 crash_tbl["event_id"] = (gap.isna() | (gap > 3)).cumsum()
 crash_events = crash_tbl.reset_index().groupby("event_id")["date"].agg(["min","max","count"])
 
-'''
-print(crash_tbl.to_string(float_format="{:+.2%}".format))  
-print(crash_events) 
-crash_events_date = crash_events[["min","max"]]
-'''
 
 
 
 
-# 24창 굴리면서 베타 
-make_beta_prepare = pd.DataFrame({"mkt_rf" : mkt_data["Mkt-RF"] ,
+
+# %% ---------------------------- 4. ② 왜: 이동 베타 ---------------------------------
+beta_prepare = pd.DataFrame({"mkt_rf" : mkt_data["Mkt-RF"] ,
                                   "rf" : mkt_data["RF"] ,
                                   "wml" : ret_wml_m,
                                   "ret_q5_m_sp500":ret_q5_m_sp500,
                                   "ret_q1_m_sp500":ret_q1_m_sp500}
                                   ).dropna()
-X = sm.add_constant(make_beta_prepare["mkt_rf"])
+X = sm.add_constant(beta_prepare["mkt_rf"])
 
 def rolling_beta(Y , windows) :
     rolling_beta = RollingOLS(Y,X,window = windows).fit()
@@ -70,20 +72,18 @@ def rolling_beta(Y , windows) :
     se = rolling_beta.bse["mkt_rf"]
     return beta , se
 
-beta , beta_se = rolling_beta(make_beta_prepare["wml"],24)
+beta , beta_se = rolling_beta(beta_prepare["wml"],24)
+beta_q5 , beta_q5_se= rolling_beta(beta_prepare["ret_q5_m_sp500"]-beta_prepare["rf"],24)
+beta_q1 , beta_q1_se= rolling_beta(beta_prepare["ret_q1_m_sp500"]-beta_prepare["rf"],24)
 beta_95cl_down = beta - (1.96*beta_se)
 beta_95cl_up = beta + (1.96*beta_se)
 
-beta_q5 , beta_q5_se= rolling_beta(make_beta_prepare["ret_q5_m_sp500"]-make_beta_prepare["rf"],24)
-beta_q1 , beta_q1_se= rolling_beta(make_beta_prepare["ret_q1_m_sp500"]-make_beta_prepare["rf"],24)
+beta_12 , beta_12_se = rolling_beta(beta_prepare["wml"],12)
+beta_q5_12 , beta_q5_12_se= rolling_beta(beta_prepare["ret_q5_m_sp500"]-beta_prepare["rf"],12)
+beta_q1_12 , beta_q1_12_se= rolling_beta(beta_prepare["ret_q1_m_sp500"]-beta_prepare["rf"],12)
 
-beta_12 , beta_12_se = rolling_beta(make_beta_prepare["wml"],12)
-beta_q5_12 , beta_q5_12_se= rolling_beta(make_beta_prepare["ret_q5_m_sp500"]-make_beta_prepare["rf"],12)
-beta_q1_12 , beta_q1_12_se= rolling_beta(make_beta_prepare["ret_q1_m_sp500"]-make_beta_prepare["rf"],24)
-
+# %% ------------------------------ 5. ② 판정표  ---------------------------------
 pre_dates = crash_events["min"] - pd.offsets.MonthEnd(1)
-
-
 beta_median_24 = beta.median()
 
 judge_tbl = pd.DataFrame({
@@ -108,32 +108,10 @@ judge_tbl["판정"] = np.select(
     default="기준 미충족",
 )
 
-print(f"전체 기간 24개월 이동 베타 중앙값: {beta_median_24:+.2f}")
-print(judge_tbl.to_string(float_format="{:+.2f}".format))
 
 
 
-'''
-for start, end in zip(crash_events_date["min"],crash_events_date["max"]):
-    plt.axvspan(start - pd.offsets.MonthEnd(1), end, color="red", alpha=0.15)
-plt.plot(beta_q5,color = "green",label = "Q5 beta")
-plt.plot(beta_q1,color = 'black',label = "Q1 beta")
-plt.plot(beta,color = "blue",label = "wml beta")
-plt.plot(beta_95cl_down,color = 'red')
-plt.plot(beta_95cl_up,color = 'red')
-plt.legend()
-plt.show()
-
-
-plt.figure()
-plt.plot(beta, label="WML β 24개월")
-plt.plot(beta_12, label="WML β 12개월")
-plt.axhline(0, color="black", linewidth=0.8)
-plt.legend()
-plt.show()
-
-'''
-
+# %% ---------------------------- 6. ③ 얼마나: 평균 분해 -------------------------------
 prepare_sep = pd.DataFrame({"wml" : ret_wml_m,
                   "is_crashed_cond" : is_crash_cond}).dropna()
 
@@ -157,25 +135,13 @@ cost = mean_nm - mean_all
 diff_t = (mean_nm - mean_cr) / (se_nm ** 2 + se_cr ** 2) ** 0.5
 
 
-print(f"기간 {wml.index.min():%Y-%m} ~ {wml.index.max():%Y-%m}")
-print(f"{'':8}{'개수':>6}{'평균':>10}{'t':>8}")
-print(f"{'평소 달':8}{n_nm:>6}{mean_nm:>+10.2%}{t_nm:>+8.2f}")
-print(f"{'조건 달':8}{n_cr:>6}{mean_cr:>+10.2%}{t_cr:>+8.2f}")
-print(f"{'전체':8}{n_all:>6}{mean_all:>+10.2%}{t_all:>+8.2f}")
-print()
-print(f"평소 달의 몫  {share_nm:+.3%}")
-print(f"조건 달의 몫  {share_cr:+.3%}")
-print(f"크래시 비용   {cost:+.3%}   ( 평소 평균 - 전체 평균)")
-print(f"차이의 t      {diff_t:+.2f}")
 
 
-#is_crash_cond
-## 각 사건마다 그룹 -> 각 기간마다 누적 -> L -> q1을 누적 -> q1/L -> 비율
-
-pre = crash_tbl.copy()
-pre["q5"] = ret_q5_m_sp500
-pre["short"] = -ret_q1_m_sp500
-leg_tbl = pre.groupby("event_id")[["wml_m","q5","short"]].sum()
+# %% ---------------------------- 7. ④ 어디서: 롱·숏 분해 -------------------------------
+leg_prepare = crash_tbl.copy()
+leg_prepare["q5"] = ret_q5_m_sp500
+leg_prepare["short"] = -ret_q1_m_sp500
+leg_tbl = leg_prepare.groupby("event_id")[["wml_m","q5","short"]].sum()
 
 leg_tbl["short_share"] = leg_tbl["short"] / leg_tbl["wml_m"]
 leg_tbl["판정"] = np.select(
@@ -183,5 +149,67 @@ leg_tbl["판정"] = np.select(
     ["손실 없음" , "숏쪽 손실"],
     default = "롱쪽 손실"
 )
+
+
+# %% ------------------------------ 8. 출력  ---------------------------------
+print("\n" + "~" * 60)
+print(f"① 언제: 크래시 조건 달 (직전 {BEAR_MONTHS}개월 시장 누적 < 0, 당월 시장 > 0)")
+print("~" * 60)
+print(crash_tbl.to_string(float_format="{:+.2%}".format))  
+print("\n[사건 요약]")
+print(crash_events) 
+print("\n" + "~" * 60)
+print("② 왜: 사건 직전 달의 24개월 이동 시장 베타")
+print("~" * 60)
+print(f"전체 기간 24개월 이동 베타 중앙값: {beta_median_24:+.2f}")
+print(judge_tbl.to_string(float_format="{:+.2f}".format))
+
+print("\n" + "~" * 60)
+print("③ 얼마나: 평소 달 vs 크래시 조건 달")
+print("~" * 60)
+print(f"기간 {wml.index.min():%Y-%m} ~ {wml.index.max():%Y-%m}")
+print(f"{'':8}{'개수':>6}{'평균':>10}{'t':>8}")
+print(f"{'평소 달':8}{n_nm:>6}{mean_nm:>+10.2%}{t_nm:>+8.2f}")
+print(f"{'조건 달':8}{n_cr:>6}{mean_cr:>+10.2%}{t_cr:>+8.2f}")
+print(f"{'전체':8}{n_all:>6}{mean_all:>+10.2%}{t_all:>+8.2f}")
+print()
+print("[분해]")
+print(f"평소 달의 몫  {share_nm:+.3%}")
+print(f"조건 달의 몫  {share_cr:+.3%}")
+print(f"크래시 비용   {cost:+.3%}   ( 평소 평균 - 전체 평균)")
+print(f"차이의 t      {diff_t:+.2f}")
+print("\n" + "~" * 60)
+print("④ 어디서: 사건별 롱·숏 기여")
+print("~" * 60)
 print(leg_tbl.to_string(float_format="{:+.2%}".format))
 
+# %% ------------------------------ 9. 그림 ---------------------------------
+
+fig, axes = plt.subplots(2, 1, figsize=(11, 8), sharex=True)
+
+ax = axes[0]
+for start, end in zip(crash_events["min"], crash_events["max"]):
+    ax.axvspan(start - pd.offsets.MonthEnd(1), end, color="tab:red", alpha=0.12, lw=0)
+ax.fill_between(beta.index, beta - 1.96 * beta_se, beta + 1.96 * beta_se,
+                color="tab:blue", alpha=0.15, lw=0, label="WML 95% 신뢰구간")
+ax.plot(beta, color="tab:blue", lw=1.8, label="WML")
+ax.plot(beta_q5, color="tab:green", lw=1.2, label="Q5 분위")
+ax.plot(beta_q1, color="black", lw=1.2, label="Q1 분위")
+ax.axhline(0, color="gray", lw=0.8)
+ax.set_ylabel("24개월 이동 시장 베타")
+ax.set_title("WML,Q1,Q5의 시장 베타 (빨간 띠: 크래시 조건 만족 기간)")
+ax.legend(loc="lower left", ncol=4, fontsize=9, frameon=False)
+
+ax = axes[1]
+for start, end in zip(crash_events["min"], crash_events["max"]):
+    ax.axvspan(start - pd.offsets.MonthEnd(1), end, color="tab:red", alpha=0.12, lw=0)
+ax.plot(beta, color="tab:blue", lw=1.5, label="24개월 창")
+ax.plot(beta_12, color="tab:orange", lw=1.2, label="12개월 창")
+ax.axhline(0, color="gray", lw=0.8)
+ax.set_ylabel("WML 시장 베타")
+ax.set_title("창 길이별 WML 베타 (방향 일치 확인)")
+ax.legend(loc="lower left", ncol=2, fontsize=9, frameon=False)
+
+fig.tight_layout()
+fig.savefig(ROOT / "figs/beta_rolling.png", dpi=200, bbox_inches="tight")
+plt.show()
