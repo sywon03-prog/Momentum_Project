@@ -48,20 +48,21 @@ plt.show()
 '''
 
 
-ret_wml_m = pd.read_pickle(ROOT / "data/cache/ret_wml_m.pkl")
-ret_wml_m = ret_wml_m.shift(1)
-with_wml_umd = pd.DataFrame({"my" : ret_wml_m,"yours" : umd_m})
+ret_wml_m_sp500 = pd.read_pickle(ROOT / "data/cache/ret_wml_m_sp500.pkl")
+ret_wml_m_sp500 = ret_wml_m_sp500.shift(1,freq = "ME")
+with_wml_umd = pd.DataFrame({"my" : ret_wml_m_sp500,"yours" : umd_m})
 
 d = with_wml_umd.dropna()
 print(d)
 x = d["yours"]
 y = d["my"]
 
-beta , alpha = np.polyfit(x,y,1)
+X_umd = sm.add_constant(x)
+ols_umd = sm.OLS(y , X_umd).fit()
+print(ols_umd.params , ols_umd.tvalues , ols_umd.rsquared)
 
-corr_wml_umd = ret_wml_m.corr(umd_m)
-print(f"상관계수 : {corr_wml_umd:.4f}\tbeta : {beta:.4f}\talpha : {alpha:.4f}")
-
+corr_wml_umd = ret_wml_m_sp500.corr(umd_m)
+print("상관계수 : ",corr_wml_umd)
 def f_parsing(path , skiprows) : 
     file = pd.read_csv(path,skiprows = skiprows)
     file = file.rename(columns = {"Unnamed: 0":"date"})
@@ -82,15 +83,15 @@ fac_4_m = pd.DataFrame({"Mkt-RF" : fac_3_m["Mkt-RF"],
                         "SMB" : fac_3_m["SMB"],
                         "HML" : fac_3_m["HML"],
                         "UMD" : umd_m,
-                        "wml" : ret_wml_m}).dropna()
+                        "wml" : ret_wml_m_sp500}).dropna()
 
-'''
+
 X = sm.add_constant(fac_4_m[["Mkt-RF", "SMB", "HML", "UMD"]])
 carhart = sm.OLS(fac_4_m["wml"], X).fit()
 print(carhart.summary())
 
 '''
-
 umd_m_36rolling = umd_m.rolling(36).mean().plot(color = 'b')
 rf_m = fac_3_m["RF"].plot()
 
+'''
