@@ -31,7 +31,7 @@ umd_by_period = pd.DataFrame({"mean" : [s4.mean() , s3.mean() , s2.mean() , s1.m
 umd_by_period["t"] = (s4_t , s3_t , s2_t , s1_t)
 umd_by_period["se"] = ((s4.std() / (s4.count() ** (0.5))),(s3.std() / (s3.count() ** (0.5))),(s2.std() / (s2.count() ** (0.5))),(s1.std() / (s1.count() ** (0.5))))
 
-# %% -------------------------- 3. 3절 검증: 상관, 단일 회귀 -----------------------------
+# %% -------------------------- 3.검증: 상관, 단일 회귀 -----------------------------
 with_wml_umd = pd.DataFrame({"wml" : ret_wml_m_sp500,"umd" : umd_m})
 
 wml_umd_m = with_wml_umd.dropna()
@@ -44,7 +44,7 @@ ols_umd = sm.OLS(y , X_umd).fit()
 corr_wml_umd = ret_wml_m_sp500.corr(umd_m)
 
 
-# %% -------------------------- 4. 3절 검증: Carhart 4팩터 -----------------------------
+# %% ---------------------- 4.검증: 다중회귀 with Carhart 4팩터 -------------------------
 fac_4_m = pd.DataFrame({"Mkt-RF" : fac_3_m["Mkt-RF"],
                         "SMB" : fac_3_m["SMB"],
                         "HML" : fac_3_m["HML"],
@@ -74,3 +74,5 @@ print(f"{'R²:':<10}{ols_umd.rsquared:.3f}")
 
 print("\n[다중회귀(Carhart 4팩터])")
 print(carhart.summary())
+
+

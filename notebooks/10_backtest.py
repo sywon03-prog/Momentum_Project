@@ -144,7 +144,8 @@ def q1_top10(t) :
     ret_q1_xs = ret_q1_xs.sort_values(ascending = False)
     high_up = ret_q1_xs.head(10)
     top10_share = high_up.sum() / ret_q1_xs.sum()
-    return high_up , ret_q1_xs.mean() , top10_share
+    up_ratio = (ret_q1_xs > 0).mean()
+    return high_up , ret_q1_xs.mean() , top10_share , up_ratio
 
 
 print("\n" + "=" * 60)
@@ -152,18 +153,20 @@ print("5절 ④ 예시: 크래시 달 판 쪽(Q1) 상위 10종목")
 print("=" * 60)
 print("\n[2009-04 실현 (형성 라벨 2009-03-31)]")
 
-high_up_2009 , ret_q1_mean_2009 , total_share_2009 = q1_top10("2009-03-31")
+high_up_2009 , ret_q1_mean_2009 , total_share_2009 , up_ratio_2009= q1_top10("2009-03-31")
 print("종목별 한 달 수익률 (%)")
 print((high_up_2009 * 100).round(1).to_string())
 print(f"2009-03-31 숏쪽 한달 수익률: {ret_q1_mean_2009:.2%}\n")
 print(f"가장 많이 오른 short 종목 10개의 2009-03-31 기여: {total_share_2009:.1%}")
+print(f"Q1 중 오른 종목 비율: {up_ratio_2009:.0%}")
 
 print("\n[2020-04 실현 (형성 라벨 2020-03-31)]")
-high_up_2020 , ret_q1_mean_2020 , total_share_2020 = q1_top10("2020-03-31")
+high_up_2020 , ret_q1_mean_2020 , total_share_2020 , up_ratio_2020  = q1_top10("2020-03-31")
 print("종목별 한 달 수익률 (%)")
 print((high_up_2020 * 100).round(1).to_string())
 print(f"2020-03-31 숏쪽 한달 수익률: {ret_q1_mean_2020:.2%}\n")
 print(f"가장 많이 오른 short 종목 10개의 2020-03-31 기여: {total_share_2020:.1%}")
+print(f"Q1 중 오른 종목 비율: {up_ratio_2020:.0%}")
 
 # %% ---------------------------- 9. 캐시 저장 ----------------------------
 if(UNIVERSE == "pit") : 

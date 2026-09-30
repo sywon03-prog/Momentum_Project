@@ -70,17 +70,18 @@ def rolling_beta(Y , windows) :
     rolling_beta = RollingOLS(Y,X,window = windows).fit()
     beta = rolling_beta.params["mkt_rf"]
     se = rolling_beta.bse["mkt_rf"]
-    return beta , se
+    resid_sd = np.sqrt(rolling_beta.mse_resid)
+    return beta , se , resid_sd
 
-beta , beta_se = rolling_beta(beta_prepare["wml"],24)
-beta_q5 , beta_q5_se= rolling_beta(beta_prepare["ret_q5_m_sp500"]-beta_prepare["rf"],24)
-beta_q1 , beta_q1_se= rolling_beta(beta_prepare["ret_q1_m_sp500"]-beta_prepare["rf"],24)
+beta , beta_se ,resid_sd= rolling_beta(beta_prepare["wml"],24)
+beta_q5 , beta_q5_se, _= rolling_beta(beta_prepare["ret_q5_m_sp500"]-beta_prepare["rf"],24)
+beta_q1 , beta_q1_se, _= rolling_beta(beta_prepare["ret_q1_m_sp500"]-beta_prepare["rf"],24)
 beta_95cl_down = beta - (1.96*beta_se)
 beta_95cl_up = beta + (1.96*beta_se)
 
-beta_12 , beta_12_se = rolling_beta(beta_prepare["wml"],12)
-beta_q5_12 , beta_q5_12_se= rolling_beta(beta_prepare["ret_q5_m_sp500"]-beta_prepare["rf"],12)
-beta_q1_12 , beta_q1_12_se= rolling_beta(beta_prepare["ret_q1_m_sp500"]-beta_prepare["rf"],12)
+beta_12 , beta_12_se , _ = rolling_beta(beta_prepare["wml"],12)
+beta_q5_12 , beta_q5_12_se, _= rolling_beta(beta_prepare["ret_q5_m_sp500"]-beta_prepare["rf"],12)
+beta_q1_12 , beta_q1_12_se, _= rolling_beta(beta_prepare["ret_q1_m_sp500"]-beta_prepare["rf"],12)
 
 # %% ------------------------------ 5. ② 판정표  ---------------------------------
 pre_dates = crash_events["min"] - pd.offsets.MonthEnd(1)
@@ -93,6 +94,10 @@ judge_tbl = pd.DataFrame({
     "β_WML_12": beta_12.reindex(pre_dates).values,
     "β_Q5_24": beta_q5.reindex(pre_dates).values,
     "β_Q1_24": beta_q1.reindex(pre_dates).values,
+    "SE_24":    beta_se.reindex(pre_dates).values,
+    "잔차std_24": resid_sd.reindex(pre_dates).values,
+    "시장std_24": beta_prepare["mkt_rf"].rolling(24).std().reindex(pre_dates).values,
+
 }, index=crash_events.index)
 
 is_a = judge_tbl["β_WML_24"] < 0
@@ -108,6 +113,9 @@ judge_tbl["판정"] = np.select(
     default="기준 미충족",
 )
 
+# 최악 달(2009-04, 2020-04)의 그달 직전 β — ② 크기 계산·④ Q1 분해용
+pre_worst = ["2009-03-31", "2020-03-31"]
+beta_worst = pd.DataFrame({"β_WML": beta, "β_Q5": beta_q5, "β_Q1": beta_q1}).loc[pre_worst]
 
 
 
@@ -163,6 +171,8 @@ print("② 왜: 사건 직전 달의 24개월 이동 시장 베타")
 print("~" * 60)
 print(f"전체 기간 24개월 이동 베타 중앙값: {beta_median_24:+.2f}")
 print(judge_tbl.to_string(float_format="{:+.2f}".format))
+print("\n[최악 달 직전 β (2009-04 → 2009-03, 2020-04 → 2020-03)]")
+print(beta_worst.to_string(float_format="{:+.2f}".format))
 
 print("\n" + "~" * 60)
 print("③ 얼마나: 평소 달 vs 크래시 조건 달")
@@ -204,8 +214,8 @@ for start, end in zip(crash_events["min"], crash_events["max"]):
 ax.fill_between(beta.index, beta - 1.96 * beta_se, beta + 1.96 * beta_se,
                 color="tab:blue", alpha=0.15, lw=0, label="WML 95% 신뢰구간")
 ax.plot(beta, color="tab:blue", lw=1.8, label="WML")
-ax.plot(beta_q5, color="tab:green", lw=1.2, label="Q5 분위")
-ax.plot(beta_q1, color="black", lw=1.2, label="Q1 분위")
+ax.plot(beta_q5, color="tab:green", lw=1.2, label="Q5 (롱)")
+ax.plot(beta_q1, color="black", lw=1.2, label="Q1 (숏)")
 ax.axhline(0, color="gray", lw=0.8)
 ax.set_ylabel("24개월 이동 시장 베타")
 ax.set_title("WML,Q1,Q5의 시장 베타 (빨간 띠: 크래시 조건 만족 기간)")
@@ -222,5 +232,5 @@ ax.set_title("창 길이별 WML 베타 (방향 일치 확인)")
 ax.legend(loc="lower left", ncol=2, fontsize=9, frameon=False)
 
 fig.tight_layout()
-fig.savefig(ROOT / "figs/beta_rolling.png", dpi=200, bbox_inches="tight")
+fig.savefig(ROOT / "figs/crash.png", dpi=200, bbox_inches="tight")
 plt.show()
